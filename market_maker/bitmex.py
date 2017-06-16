@@ -23,6 +23,7 @@ class BitMEX(object):
         self.base_url = base_url
         self.symbol = symbol
         self.token = None
+        self.execInst = 'ParticipateDoNotInitiate'
         # User/pass auth is no longer supported
         if (login or password or otpToken):
             raise Exception("User/password authentication is no longer supported via the API. Please use " +
@@ -60,7 +61,7 @@ class BitMEX(object):
     def ticker_data(self, symbol):
         """Get ticker data."""
         return self.ws.get_ticker(symbol)
-
+    
     def instrument(self, symbol):
         """Get an instrument's details."""
         return self.ws.get_instrument(symbol)
@@ -135,7 +136,8 @@ class BitMEX(object):
             'symbol': self.symbol,
             'orderQty': quantity,
             'price': price,
-            'clOrdID': clOrdID
+            'clOrdID': clOrdID,
+            'execInst': self.execInst
         }
         return self._curl_bitmex(api=endpoint, postdict=postdict, verb="POST")
 
@@ -150,6 +152,7 @@ class BitMEX(object):
         for order in orders:
             order['clOrdID'] = self.orderIDPrefix + base64.b64encode(uuid.uuid4().bytes).decode('utf-8').rstrip('=\n')
             order['symbol'] = self.symbol
+            order['execInst'] = self.execInst
         return self._curl_bitmex(api='order/bulk', postdict={'orders': orders}, verb='POST')
 
     @authentication_required
@@ -263,6 +266,7 @@ class BitMEX(object):
                 if (
                         order['orderQty'] != postdict['orderQty'] or
                         order['price'] != postdict['price'] or
+                        order['execInst'] != postDict['execInst'] or
                         order['symbol'] != postdict['symbol']):
                     raise Exception('Attempted to recover from duplicate clOrdID, but order returned from API ' +
                                     'did not match POST.\nPOST data: %s\nReturned order: %s' % (
